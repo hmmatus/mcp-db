@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -9,7 +7,7 @@ services:
       POSTGRES_PASSWORD: mcppassword
       POSTGRES_DB: usuarios_db
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       # Ejecutar init.sql primero (estructura)
@@ -17,7 +15,7 @@ services:
       # Luego ejecutar seed-usuarios.sql (datos)
       - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U mcpuser"]
+      test: ["CMD-SHELL", "pg_isready -U mcpuser -d usuarios_db"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +25,7 @@ services:
   mcp-server:
     build:
       context: .
-      dockerfile: ./docker/Dockerfile
+      dockerfile: ./Dockerfile
     container_name: mcp-server
     environment:
       DB_HOST: postgres
@@ -36,8 +34,10 @@ services:
       DB_PASSWORD: mcppassword
       DB_NAME: usuarios_db
       PYTHONUNBUFFERED: 1
-    ports:
-      - "3000:3000"
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
     depends_on:
       postgres:
         condition: service_healthy

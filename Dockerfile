@@ -13,7 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar código de la aplicación
-COPY app/ .
+COPY app ./app
 
-# Esperar a que postgres esté listo y ejecutar la aplicación
-CMD ["python", "server.py"]
+# Ejecutar como módulo Python
+CMD ["python", "-m", "app.server"]
