@@ -2,20 +2,26 @@
 API REST Flask para gestión de usuarios
 """
 
+import base64
 import logging
 import os
+import tempfile
+import uuid
 from functools import wraps
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from werkzeug.utils import secure_filename
 
 load_dotenv()
 
 try:
     from app.database import DatabaseConnection
+    from app import voice as voice_module
 except ImportError:
     from database import DatabaseConnection
+    import voice as voice_module
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +30,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 WEB_STATIC = os.path.join(os.path.dirname(os.path.dirname(__file__)), "web", "static")
+UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), "mcp-voice")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app = Flask(__name__, static_folder=WEB_STATIC, static_url_path="/static")
 CORS(app)
@@ -204,6 +212,81 @@ def buscar_edad():
 def estadisticas():
     stats = get_db().obtener_estadisticas()
     return respuesta(exito=True, datos=stats)
+
+
+# ── Voz ─────────────────────────────────────────────────────
+
+@app.route("/api/voice/transcribe", methods=["POST"])
+def transcribir_audio_route():
+    filepath = None
+    try:
+        if "audio" not in request.files:
+            return respuesta(exito=False, error="No se recibió archivo de audio", status=400)
+
+        audio_file = request.files["audio"]
+        ext = os.path.splitext(secure_filename(audio_file.filename or "audio.webm"))[1] or ".webm"
+        filepath = os.path.join(UPLOAD_FOLDER, f"{uuid.uuid4().hex}{ext}")
+        audio_file.save(filepath)
+
+        texto = voice_module.transcribir_audio(filepath)
+        return jsonify({"exito": True, "texto": texto})
+    except ValueError as e:
+        return respuesta(exito=False, error=str(e), status=400)
+    except Exception as e:
+        logger.exception("Error transcribiendo audio: %s", e)
+        return respuesta(exito=False, error=str(e), status=500)
+    finally:
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
+
+
+@app.route("/api/voice/procesar-comando", methods=["POST"])
+def procesar_comando_route():
+    try:
+        data = request.get_json(silent=True) or {}
+        comando = (data.get("comando") or "").strip()
+        if not comando:
+            return respuesta(exito=False, error="comando es requerido", status=400)
+
+        resultado = voice_module.procesar_comando_voz(comando)
+        return jsonify({
+            "exito": True,
+            "tipo_comando": resultado["tipo_comando"],
+            "parametros": resultado["parametros"],
+            "descripcion": resultado.get("descripcion", ""),
+        })
+    except ValueError as e:
+        return respuesta(exito=False, error=str(e), status=400)
+    except Exception as e:
+        logger.exception("Error procesando comando: %s", e)
+        return respuesta(exito=False, error=str(e), status=500)
+
+
+@app.route("/api/voice/sintetizar", methods=["POST"])
+def sintetizar_voz_route():
+    audio_path = None
+    try:
+        data = request.get_json(silent=True) or {}
+        texto = (data.get("texto") or "").strip()
+        if not texto:
+            return respuesta(exito=False, error="texto es requerido", status=400)
+
+        audio_path = voice_module.sintetizar_voz(texto)
+        with open(audio_path, "rb") as f:
+            audio_b64 = base64.b64encode(f.read()).decode()
+
+        return jsonify({
+            "exito": True,
+            "audio_url": f"data:audio/mp3;base64,{audio_b64}",
+        })
+    except ValueError as e:
+        return respuesta(exito=False, error=str(e), status=400)
+    except Exception as e:
+        logger.exception("Error sintetizando voz: %s", e)
+        return respuesta(exito=False, error=str(e), status=500)
+    finally:
+        if audio_path and os.path.exists(audio_path):
+            os.remove(audio_path)
 
 
 @app.errorhandler(404)

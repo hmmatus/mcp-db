@@ -219,5 +219,7 @@ async function cargarEstadisticas() {
 // ── Init ────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
-  cargarUltimosUsuarios();
+  if (document.getElementById('seccion-inicio')?.classList.contains('activa')) {
+    cargarUltimosUsuarios();
+  }
 });

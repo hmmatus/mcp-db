@@ -7,25 +7,108 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <!-- Modal permiso micrófono -->
+  <div id="modal-permiso-mic" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-mic-titulo">
+    <div class="modal-card">
+      <h2 id="modal-mic-titulo">🎤 Acceso al micrófono</h2>
+      <p class="modal-lead">Esta app usa tu voz para controlar la base de datos de usuarios.</p>
+
+      <ul class="modal-lista">
+        <li>Graba audio mientras mantienes presionado el botón 🎤</li>
+        <li>Transcribe tu comando con <strong>OpenAI Whisper</strong></li>
+        <li>Ejecuta búsquedas, creación o estadísticas</li>
+        <li>Responde con voz sintetizada (TTS)</li>
+      </ul>
+
+      <p class="modal-nota">
+        El audio se procesa en el servidor y se envía a OpenAI solo para transcribir.
+        No guardamos grabaciones en disco de forma permanente.
+      </p>
+
+      <div id="modal-mic-error" class="modal-error hidden"></div>
+
+      <div class="modal-actions">
+        <button id="btn-permitir-mic" type="button" class="btn">Permitir micrófono</button>
+        <button id="btn-rechazar-mic" type="button" class="btn btn-ghost">Ahora no</button>
+      </div>
+    </div>
+  </div>
+
   <header class="header">
     <h1>👥 MCP Usuarios</h1>
     <p>Gestión de usuarios con PostgreSQL y API REST</p>
   </header>
 
   <nav class="navbar" id="navbar">
-    <button class="nav-btn active" data-seccion="inicio">🏠 Inicio</button>
+    <button class="nav-btn active" data-seccion="voz">🎤 Voz</button>
+    <button class="nav-btn" data-seccion="inicio">🏠 Inicio</button>
     <button class="nav-btn" data-seccion="buscar">🔍 Buscar</button>
     <button class="nav-btn" data-seccion="crear">➕ Crear</button>
     <button class="nav-btn" data-seccion="estadisticas">📊 Estadísticas</button>
   </nav>
 
   <main class="container">
+    <!-- VOZ -->
+    <section id="seccion-voz" class="seccion activa">
+      <h2 class="section-title">🎤 Buscar por Voz</h2>
+
+      <div class="card voice-card">
+        <div id="mic-permiso-estado" class="mic-estado mic-estado--pendiente">
+          <span id="mic-estado-icon">⏳</span>
+          <span id="mic-estado-texto">Verificando permiso de micrófono...</span>
+        </div>
+
+        <div class="voice-interface">
+          <button id="btn-microfono" class="btn-voice" type="button" disabled>
+            <span class="microfono-icon">🎤</span>
+            <span class="microfono-text">Presiona y habla</span>
+          </button>
+
+          <div id="grabando" class="grabando hidden">
+            <div class="pulse"></div>
+            <p>Escuchando...</p>
+          </div>
+
+          <div class="transcription-box">
+            <p id="texto-escuchado" class="placeholder">Tú dices: </p>
+          </div>
+
+          <div id="respuesta-voz" class="respuesta-box hidden">
+            <div class="spinner-small"></div>
+            <p>Procesando...</p>
+          </div>
+
+          <div id="resultado-voz-area" class="resultado"></div>
+
+          <div id="audio-player-area" class="hidden">
+            <button id="btn-reproducir" class="btn btn-secondary" type="button">
+              🔊 Reproducir respuesta
+            </button>
+            <audio id="audio-respuesta"></audio>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📝 Ejemplos de comandos</h3>
+        <ul class="features">
+          <li>"Busca usuarios en San Salvador"</li>
+          <li>"Dame los usuarios entre 25 y 35 años"</li>
+          <li>"Busca a Juan"</li>
+          <li>"Crea un usuario llamado Carlos Rodríguez con email carlos@mail.com"</li>
+          <li>"Cuántos usuarios hay en total?"</li>
+          <li>"Elimina el usuario 5"</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- INICIO -->
-    <section id="seccion-inicio" class="seccion activa">
+    <section id="seccion-inicio" class="seccion">
       <div class="card">
         <h2>Bienvenido</h2>
         <p>Explora, busca y administra usuarios en tiempo real.</p>
         <ul class="features">
+          <li>🎤 Comandos de voz con Whisper y TTS</li>
           <li>📋 Listado paginado de usuarios</li>
           <li>🔎 Búsqueda por email, nombre, ciudad y edad</li>
           <li>➕ Creación de nuevos registros</li>
@@ -126,5 +209,6 @@
   </footer>
 
   <script src="/static/script.js"></script>
+  <script src="/static/voice.js"></script>
 </body>
 </html>

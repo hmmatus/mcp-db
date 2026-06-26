@@ -57,6 +57,8 @@ services:
       DB_NAME: usuarios_db
       FLASK_ENV: production
       PYTHONUNBUFFERED: 1
+    env_file:
+      - .env
     ports:
       - "5001:5000"
     depends_on:
