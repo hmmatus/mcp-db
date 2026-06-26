@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP Usuarios — Gestión de Base de Datos</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="header">
+    <h1>👥 MCP Usuarios</h1>
+    <p>Gestión de usuarios con PostgreSQL y API REST</p>
+  </header>
+
+  <nav class="navbar" id="navbar">
+    <button class="nav-btn active" data-seccion="inicio">🏠 Inicio</button>
+    <button class="nav-btn" data-seccion="buscar">🔍 Buscar</button>
+    <button class="nav-btn" data-seccion="crear">➕ Crear</button>
+    <button class="nav-btn" data-seccion="estadisticas">📊 Estadísticas</button>
+  </nav>
+
+  <main class="container">
+    <!-- INICIO -->
+    <section id="seccion-inicio" class="seccion activa">
+      <div class="card">
+        <h2>Bienvenido</h2>
+        <p>Explora, busca y administra usuarios en tiempo real.</p>
+        <ul class="features">
+          <li>📋 Listado paginado de usuarios</li>
+          <li>🔎 Búsqueda por email, nombre, ciudad y edad</li>
+          <li>➕ Creación de nuevos registros</li>
+          <li>📊 Estadísticas globales de la base de datos</li>
+        </ul>
+      </div>
+      <h3 class="section-title">Últimos usuarios</h3>
+      <div id="grid-usuarios" class="grid-usuarios">
+        <div class="loading">Cargando usuarios...</div>
+      </div>
+    </section>
+
+    <!-- BUSCAR -->
+    <section id="seccion-buscar" class="seccion">
+      <h2 class="section-title">🔍 Búsqueda de usuarios</h2>
+
+      <div class="search-grid">
+        <div class="card search-card">
+          <h3>📧 Por Email</h3>
+          <input type="email" id="input-email" placeholder="usuario@ejemplo.com">
+          <button class="btn" onclick="buscarEmail()">Buscar</button>
+          <div id="resultado-email" class="resultado"></div>
+        </div>
+
+        <div class="card search-card">
+          <h3>👤 Por Nombre</h3>
+          <input type="text" id="input-nombre" placeholder="Nombre o parte del nombre">
+          <button class="btn" onclick="buscarNombre()">Buscar</button>
+          <div id="resultado-nombre" class="resultado"></div>
+        </div>
+
+        <div class="card search-card">
+          <h3>🏙️ Por Ciudad</h3>
+          <input type="text" id="input-ciudad" placeholder="Ciudad">
+          <button class="btn" onclick="buscarCiudad()">Buscar</button>
+          <div id="resultado-ciudad" class="resultado"></div>
+        </div>
+
+        <div class="card search-card">
+          <h3>🎂 Por Edad</h3>
+          <div class="edad-inputs">
+            <input type="number" id="input-edad-min" placeholder="Mín" min="0" max="150" value="18">
+            <span>—</span>
+            <input type="number" id="input-edad-max" placeholder="Máx" min="0" max="150" value="65">
+          </div>
+          <button class="btn" onclick="buscarEdad()">Buscar</button>
+          <div id="resultado-edad" class="resultado"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CREAR -->
+    <section id="seccion-crear" class="seccion">
+      <div class="card form-card">
+        <h2>➕ Crear nuevo usuario</h2>
+        <form id="form-crear" onsubmit="crearUsuario(event)">
+          <div class="form-group">
+            <label for="crear-nombre">Nombre *</label>
+            <input type="text" id="crear-nombre" required placeholder="Nombre completo">
+          </div>
+          <div class="form-group">
+            <label for="crear-email">Email *</label>
+            <input type="email" id="crear-email" required placeholder="usuario@ejemplo.com">
+          </div>
+          <div class="form-group">
+            <label for="crear-edad">Edad</label>
+            <input type="number" id="crear-edad" min="0" max="150" placeholder="Opcional">
+          </div>
+          <div class="form-group">
+            <label for="crear-ciudad">Ciudad</label>
+            <input type="text" id="crear-ciudad" placeholder="Opcional">
+          </div>
+          <div class="form-group">
+            <label for="crear-pais">País</label>
+            <input type="text" id="crear-pais" placeholder="Opcional">
+          </div>
+          <div class="form-group">
+            <label for="crear-telefono">Teléfono</label>
+            <input type="text" id="crear-telefono" placeholder="Opcional">
+          </div>
+          <button type="submit" class="btn btn-full">Crear Usuario</button>
+        </form>
+        <div id="resultado-crear" class="resultado"></div>
+      </div>
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section id="seccion-estadisticas" class="seccion">
+      <h2 class="section-title">📊 Estadísticas globales</h2>
+      <div id="grid-stats" class="grid-stats">
+        <div class="loading">Cargando estadísticas...</div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>MCP Usuarios DB &mdash; Flask + PostgreSQL + Docker</p>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

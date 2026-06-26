@@ -10,9 +10,7 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Ejecutar init.sql primero (estructura)
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
-      # Luego ejecutar seed-usuarios.sql (datos)
       - ./db/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mcpuser -d usuarios_db"]
@@ -43,6 +41,30 @@ services:
         condition: service_healthy
     volumes:
       - ./app:/app/app
+    networks:
+      - mcp-network
+
+  mcp-api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile-web
+    container_name: mcp-api
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: mcpuser
+      DB_PASSWORD: mcppassword
+      DB_NAME: usuarios_db
+      FLASK_ENV: production
+      PYTHONUNBUFFERED: 1
+    ports:
+      - "5001:5000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./app:/app/app
+      - ./web:/app/web
     networks:
       - mcp-network
 
