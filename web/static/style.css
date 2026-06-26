@@ -70,6 +70,33 @@ body {
   font-weight: 600;
 }
 
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+  padding: 8px 0;
+}
+
+.lang-btn {
+  background: #f0f0f0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--text-light);
+  transition: var(--transition);
+}
+
+.lang-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.lang-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
 /* Container */
 .container {
   max-width: 1200px;
@@ -621,6 +648,47 @@ body.modal-open { overflow: hidden; }
   background: var(--error);
   color: var(--error-text);
   border: 1px solid #dc3545;
+}
+
+.mic-device-row {
+  max-width: 420px;
+  margin: 0 auto 24px;
+  text-align: left;
+}
+
+.mic-device-row label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.mic-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid #e0e0e0;
+  border-radius: var(--radius);
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text);
+}
+
+.mic-select:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.mic-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mic-device-hint {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-light);
+  line-height: 1.4;
 }
 
 .btn-voice:disabled {

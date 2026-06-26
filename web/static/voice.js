@@ -7,17 +7,122 @@ let micStream = null;
 let micInitPromise = null;
 
 let micPermisoConcedido = false;
+let selectedMicId = localStorage.getItem('micDeviceId') || '';
 
-const MIC_IDLE = '<span class="microfono-icon">🎤</span><span class="microfono-text">Presiona y habla</span>';
-const MIC_RECORDING = '<span class="microfono-icon">⏹️</span><span class="microfono-text">Soltar para detener</span>';
+function cerrarStreamMic() {
+  if (micStream) {
+    micStream.getTracks().forEach((track) => track.stop());
+    micStream = null;
+  }
+  mediaRecorder = null;
+}
+
+function reiniciarMicrofono() {
+  cerrarStreamMic();
+  micInitPromise = null;
+  micPermisoConcedido = false;
+}
+
+function getAudioConstraints() {
+  const constraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+  if (selectedMicId) {
+    constraints.deviceId = { ideal: selectedMicId };
+  }
+  return { audio: constraints };
+}
+
+function esDispositivoAudifonos(label) {
+  const l = (label || '').toLowerCase();
+  return /headset|headphone|earbud|airpod|bluetooth|beats|sony|bose|jabra|logitech|usb audio|external/i.test(l);
+}
+
+async function cargarListaMicrofonos() {
+  const select = $('select-mic');
+  if (!select || !navigator.mediaDevices?.enumerateDevices) return;
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const inputs = devices.filter((d) => d.kind === 'audioinput');
+  const saved = selectedMicId;
+
+  select.innerHTML = `<option value="">${t('voice.mic.deviceDefault')}</option>`;
+  inputs.forEach((d, i) => {
+    const opt = document.createElement('option');
+    opt.value = d.deviceId;
+    opt.textContent = d.label || `${t('voice.mic.deviceUnknown')} ${i + 1}`;
+    select.appendChild(opt);
+  });
+
+  select.disabled = inputs.length === 0;
+
+  if (saved && inputs.some((d) => d.deviceId === saved)) {
+    select.value = saved;
+  } else {
+    const headset = inputs.find((d) => esDispositivoAudifonos(d.label));
+    if (headset) {
+      select.value = headset.deviceId;
+      selectedMicId = headset.deviceId;
+      localStorage.setItem('micDeviceId', selectedMicId);
+    }
+  }
+}
+
+function configurarSelectorMicrofono() {
+  const select = $('select-mic');
+  if (!select) return;
+
+  select.addEventListener('change', async () => {
+    selectedMicId = select.value;
+    if (selectedMicId) {
+      localStorage.setItem('micDeviceId', selectedMicId);
+    } else {
+      localStorage.removeItem('micDeviceId');
+    }
+    reiniciarMicrofono();
+    if (select.value) {
+      try {
+        await inicializarMicrofono();
+      } catch {
+        actualizarEstadoMic('denegado');
+      }
+    } else {
+      actualizarEstadoMic('pendiente');
+    }
+  });
+
+  navigator.mediaDevices?.addEventListener('devicechange', () => {
+    cargarListaMicrofonos();
+  });
+}
+
+function getMimeType() {
+  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+  return types.find((mime) => MediaRecorder.isTypeSupported(mime)) || '';
+}
+
+function micIdleHtml() {
+  return `<span class="microfono-icon">🎤</span><span class="microfono-text">${t('voice.mic.press')}</span>`;
+}
+
+function micRecordingHtml() {
+  return `<span class="microfono-icon">⏹️</span><span class="microfono-text">${t('voice.mic.release')}</span>`;
+}
+
+function setYouSaid(text) {
+  $('texto-escuchado').innerHTML = `<span data-i18n="voice.youSay">${t('voice.youSay')}</span> ${escapar(text)}`;
+}
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function getMimeType() {
-  const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
-  return types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+function escapar(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 
 async function inicializarMicrofono() {
@@ -26,10 +131,13 @@ async function inicializarMicrofono() {
   micInitPromise = (async () => {
     const btn = $('btn-microfono');
     if (!navigator.mediaDevices?.getUserMedia) {
-      throw new Error('Tu navegador no soporta grabación de audio');
+      throw new Error(t('voice.err.browser'));
     }
 
-    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    cerrarStreamMic();
+    micStream = await navigator.mediaDevices.getUserMedia(getAudioConstraints());
+    await cargarListaMicrofonos();
+
     const mimeType = getMimeType();
     const options = mimeType ? { mimeType } : undefined;
     mediaRecorder = new MediaRecorder(micStream, options);
@@ -40,9 +148,12 @@ async function inicializarMicrofono() {
 
     mediaRecorder.onstop = () => procesarAudio();
 
+    const select = $('select-mic');
+    if (select) select.disabled = false;
+
     if (btn) {
       btn.disabled = false;
-      btn.title = 'Mantén presionado para hablar';
+      btn.title = t('voice.mic.ready');
     }
     micPermisoConcedido = true;
     actualizarEstadoMic('ok');
@@ -87,11 +198,11 @@ async function iniciarGrabacion(e) {
   const btn = $('btn-microfono');
   const grabandoDiv = $('grabando');
   btn.classList.add('recording');
-  btn.innerHTML = MIC_RECORDING;
+  btn.innerHTML = micRecordingHtml();
   grabandoDiv.classList.remove('hidden');
   $('audio-player-area').classList.add('hidden');
   $('resultado-voz-area').innerHTML = '';
-  $('texto-escuchado').textContent = 'Tú dices: Escuchando...';
+  setYouSaid(t('voice.listening'));
 }
 
 function detenerGrabacion(e) {
@@ -106,7 +217,7 @@ function detenerGrabacion(e) {
 
   const btn = $('btn-microfono');
   btn.classList.remove('recording');
-  btn.innerHTML = MIC_IDLE;
+  btn.innerHTML = micIdleHtml();
   $('grabando').classList.add('hidden');
 }
 
@@ -114,7 +225,7 @@ async function procesarAudio() {
   const respuestaVozDiv = $('respuesta-voz');
   const textoEscuchado = $('texto-escuchado');
   respuestaVozDiv.classList.remove('hidden');
-  textoEscuchado.textContent = 'Tú dices: Procesando...';
+  setYouSaid(t('voice.processing'));
 
   try {
     const mimeType = mediaRecorder?.mimeType || 'audio/webm';
@@ -122,26 +233,27 @@ async function procesarAudio() {
     const audioBlob = new Blob(audioChunks, { type: mimeType });
 
     if (audioBlob.size < 1000) {
-      mostrarErrorVoz('Grabación muy corta. Mantén presionado y habla más tiempo.');
+      mostrarErrorVoz(t('voice.err.short'));
       return;
     }
 
     const formData = new FormData();
     formData.append('audio', audioBlob, `audio.${ext}`);
 
-    const transcriptionResponse = await fetch('/api/voice/transcribe', {
+    const transcriptionResponse = await fetch(`/api/voice/transcribe?${apiLangQuery()}`, {
       method: 'POST',
+      headers: { 'Accept-Language': getLang() },
       body: formData,
     });
     const transcriptionData = await transcriptionResponse.json();
 
     if (!transcriptionData.exito) {
-      mostrarErrorVoz(transcriptionData.error || 'Error al transcribir');
+      mostrarErrorVoz(transcriptionData.error || t('err.generic'));
       return;
     }
 
     const textoUsuario = transcriptionData.texto;
-    textoEscuchado.textContent = `Tú dices: "${textoUsuario}"`;
+    setYouSaid(`"${textoUsuario}"`);
     await procesarComandoVoz(textoUsuario);
   } catch (error) {
     mostrarErrorVoz(error.message);
@@ -150,64 +262,66 @@ async function procesarAudio() {
 
 async function procesarComandoVoz(texto) {
   try {
-    const comandoResponse = await fetch('/api/voice/procesar-comando', {
+    const comandoResponse = await fetch(`/api/voice/procesar-comando?${apiLangQuery()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ comando: texto }),
+      headers: { 'Content-Type': 'application/json', 'Accept-Language': getLang() },
+      body: JSON.stringify({ comando: texto, lang: getLang() }),
     });
     const comandoData = await comandoResponse.json();
 
     if (!comandoData.exito) {
-      mostrarErrorVoz(comandoData.error || 'Comando no interpretado');
+      mostrarErrorVoz(comandoData.error || t('voice.err.unknown'));
       return;
     }
 
     const { tipo_comando: tipo, parametros } = comandoData;
+    const langHdr = { 'Accept-Language': getLang() };
     let resultado;
 
     switch (tipo) {
       case 'buscar_ciudad':
-        resultado = await fetch(
+        resultado = await fetch(withLang(
           `${API_BASE}/search/ciudad?ciudad=${encodeURIComponent(parametros.ciudad)}&limite=10`
-        );
+        ), { headers: langHdr });
         break;
       case 'buscar_nombre':
-        resultado = await fetch(
+        resultado = await fetch(withLang(
           `${API_BASE}/search/nombre?nombre=${encodeURIComponent(parametros.nombre)}&limite=10`
-        );
+        ), { headers: langHdr });
         break;
       case 'buscar_edad':
-        resultado = await fetch(
+        resultado = await fetch(withLang(
           `${API_BASE}/search/edad?edad_minima=${parametros.edad_minima}&edad_maxima=${parametros.edad_maxima}`
-        );
+        ), { headers: langHdr });
         break;
       case 'buscar_email':
-        resultado = await fetch(
+        resultado = await fetch(withLang(
           `${API_BASE}/search/email?email=${encodeURIComponent(parametros.email)}`
-        );
+        ), { headers: langHdr });
         break;
       case 'crear_usuario':
-        resultado = await fetch(`${API_BASE}/usuarios`, {
+        resultado = await fetch(withLang(`${API_BASE}/usuarios`), {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { ...langHdr, 'Content-Type': 'application/json' },
           body: JSON.stringify(parametros),
         });
         break;
       case 'estadisticas':
-        resultado = await fetch(`${API_BASE}/estadisticas`);
+        resultado = await fetch(withLang(`${API_BASE}/estadisticas`), { headers: langHdr });
         break;
       case 'eliminar_usuario':
-        resultado = await fetch(`${API_BASE}/usuarios/${parametros.usuario_id}`, {
+        resultado = await fetch(withLang(`${API_BASE}/usuarios/${parametros.usuario_id}`), {
           method: 'DELETE',
+          headers: langHdr,
         });
         break;
       case 'listar':
-        resultado = await fetch(
+        resultado = await fetch(withLang(
           `${API_BASE}/usuarios?limite=${parametros.limite || 10}&offset=0`
-        );
+        ), { headers: langHdr });
         break;
       default:
-        mostrarErrorVoz(`Comando no reconocido: ${tipo}`);
+        mostrarErrorVoz(`${t('voice.err.unknown')}: ${tipo}`);
         return;
     }
 
@@ -222,44 +336,48 @@ async function procesarComandoVoz(texto) {
 
 function generarRespuestaTexto(tipo, datos, parametros) {
   if (!datos.exito) {
-    return datos.error || 'La operación no se pudo completar';
+    return datos.error || t('voice.resp.failed');
   }
 
   const lista = Array.isArray(datos.datos) ? datos.datos : (datos.datos ? [datos.datos] : []);
-  const nombres = lista.slice(0, 5).map(u => u.nombre).join(', ');
+  const nombres = lista.slice(0, 5).map((u) => u.nombre).join(', ');
 
   switch (tipo) {
     case 'buscar_ciudad':
-      return `Encontré ${lista.length} usuarios en ${parametros.ciudad}. ${nombres}`;
+      return t('voice.resp.city', { n: lista.length, city: parametros.ciudad, names: nombres });
     case 'buscar_nombre':
-      return `Encontré ${lista.length} usuarios: ${nombres}`;
+      return t('voice.resp.name', { n: lista.length, names: nombres });
     case 'buscar_edad':
-      return `Encontré ${lista.length} usuarios entre ${parametros.edad_minima} y ${parametros.edad_maxima} años. ${nombres}`;
+      return t('voice.resp.age', {
+        n: lista.length, min: parametros.edad_minima, max: parametros.edad_maxima, names: nombres,
+      });
     case 'buscar_email':
       return lista.length
-        ? `Encontré a ${lista[0].nombre} con email ${lista[0].email}`
-        : 'No encontré ese email';
+        ? t('voice.resp.email', { name: lista[0].nombre, email: lista[0].email })
+        : t('voice.resp.emailNotFound');
     case 'crear_usuario':
-      return `Usuario ${parametros.nombre} creado con email ${parametros.email}`;
+      return t('voice.resp.created', { name: parametros.nombre, email: parametros.email });
     case 'estadisticas': {
       const s = datos.datos;
-      return `Hay ${s.total} usuarios en total. Edad promedio ${s.edad_promedio} años. ${s.ciudades_unicas} ciudades y ${s.paises_unicos} países.`;
+      return t('voice.resp.stats', {
+        total: s.total, avg: s.edad_promedio, cities: s.ciudades_unicas, countries: s.paises_unicos,
+      });
     }
     case 'eliminar_usuario':
-      return `Usuario ${parametros.usuario_id} eliminado`;
+      return t('voice.resp.deleted', { id: parametros.usuario_id });
     case 'listar':
-      return `Listando ${lista.length} usuarios. ${nombres}`;
+      return t('voice.resp.list', { n: lista.length, names: nombres });
     default:
-      return datos.mensaje || 'Operación completada';
+      return datos.mensaje || t('voice.resp.done');
   }
 }
 
 async function sintetizarYReproducir(texto) {
   try {
-    const response = await fetch('/api/voice/sintetizar', {
+    const response = await fetch(`/api/voice/sintetizar?${apiLangQuery()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texto }),
+      headers: { 'Content-Type': 'application/json', 'Accept-Language': getLang() },
+      body: JSON.stringify({ texto, lang: getLang() }),
     });
     const data = await response.json();
 
@@ -292,22 +410,7 @@ function mostrarResultadoVoz(datos, tipo) {
 
   $('resultado-voz-area').innerHTML =
     `<div class="resultado-item ${ok ? 'success' : 'error'}">` +
-    `${ok ? '✅' : '❌'} ${tipo.replace(/_/g, ' ')}<br>${detalle || ''}</div>`;
-}
-
-function mostrarErrorVoz(mensaje) {
-  $('respuesta-voz').classList.add('hidden');
-  $('resultado-voz-area').innerHTML = `<div class="resultado-item error">❌ ${mensaje}</div>`;
-}
-
-async function consultarEstadoPermiso() {
-  if (!navigator.permissions?.query) return 'unknown';
-  try {
-    const result = await navigator.permissions.query({ name: 'microphone' });
-    return result.state;
-  } catch {
-    return 'unknown';
-  }
+    `${ok ? '✅' : '❌'} ${ok ? t('voice.ok') : t('voice.fail')} — ${tipo.replace(/_/g, ' ')}<br>${detalle || ''}</div>`;
 }
 
 function actualizarEstadoMic(estado) {
@@ -321,17 +424,17 @@ function actualizarEstadoMic(estado) {
   if (estado === 'ok') {
     badge.classList.add('mic-estado--ok');
     icon.textContent = '✅';
-    texto.textContent = 'Micrófono listo — mantén presionado para hablar';
+    texto.textContent = t('voice.mic.ready');
     if (btn) btn.disabled = false;
   } else if (estado === 'denegado') {
     badge.classList.add('mic-estado--denegado');
     icon.textContent = '🚫';
-    texto.textContent = 'Micrófono bloqueado — habilítalo en ajustes del navegador';
+    texto.textContent = t('voice.mic.denied');
     if (btn) btn.disabled = true;
   } else {
     badge.classList.add('mic-estado--pendiente');
     icon.textContent = '⏳';
-    texto.textContent = 'Se necesita permiso de micrófono para usar voz';
+    texto.textContent = t('voice.mic.pending');
     if (btn) btn.disabled = true;
   }
 }
@@ -345,8 +448,7 @@ function mostrarModalPermiso(modo) {
   errorEl.textContent = '';
 
   if (modo === 'denegado') {
-    errorEl.textContent =
-      'Permiso denegado. Ve a ajustes del navegador → Privacidad → Micrófono y permite el acceso para este sitio.';
+    errorEl.textContent = t('modal.mic.denied');
     errorEl.classList.remove('hidden');
   }
 
@@ -373,8 +475,8 @@ async function solicitarPermisoMicrofono() {
   } catch (error) {
     const msg =
       error.name === 'NotAllowedError'
-        ? 'Permiso denegado. Habilítalo en los ajustes de privacidad del navegador.'
-        : `Error: ${error.message}`;
+        ? t('modal.mic.deniedShort')
+        : `${t('err.generic')}: ${error.message}`;
     errorEl.textContent = msg;
     errorEl.classList.remove('hidden');
     actualizarEstadoMic('denegado');
@@ -450,7 +552,32 @@ function configurarEventosVoz() {
 function bootVoice() {
   configurarEventosVoz();
   configurarModalPermiso();
+  configurarSelectorMicrofono();
   verificarPermisosMicrofono();
+}
+
+document.addEventListener('langchange', () => {
+  applyI18n();
+  cargarListaMicrofonos();
+  if (micPermisoConcedido) actualizarEstadoMic('ok');
+  else actualizarEstadoMic('pendiente');
+  const btn = $('btn-microfono');
+  if (btn && !btn.classList.contains('recording')) btn.innerHTML = micIdleHtml();
+});
+
+function mostrarErrorVoz(mensaje) {
+  $('respuesta-voz').classList.add('hidden');
+  $('resultado-voz-area').innerHTML = `<div class="resultado-item error">❌ ${mensaje}</div>`;
+}
+
+async function consultarEstadoPermiso() {
+  if (!navigator.permissions?.query) return 'unknown';
+  try {
+    const result = await navigator.permissions.query({ name: 'microphone' });
+    return result.state;
+  } catch {
+    return 'unknown';
+  }
 }
 
 if (document.readyState === 'loading') {

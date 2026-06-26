@@ -9,7 +9,7 @@ function cambiarSeccion(nombre) {
   const seccion = document.getElementById(`seccion-${nombre}`);
   if (seccion) seccion.classList.add('activa');
 
-  const btn = document.querySelector(`[data-seccion="${nombre}"]`);
+  const btn = document.querySelector(`.nav-btn[data-seccion="${nombre}"]`);
   if (btn) btn.classList.add('active');
 
   if (nombre === 'estadisticas') cargarEstadisticas();
@@ -20,6 +20,12 @@ document.querySelectorAll('.nav-btn').forEach(btn => {
   btn.addEventListener('click', () => cambiarSeccion(btn.dataset.seccion));
 });
 
+document.addEventListener('langchange', () => {
+  const activa = document.querySelector('.seccion.activa');
+  if (activa?.id === 'seccion-inicio') cargarUltimosUsuarios();
+  if (activa?.id === 'seccion-estadisticas') cargarEstadisticas();
+});
+
 // ── Helpers ─────────────────────────────────────────────────
 
 function mostrarResultado(elemento, mensaje, exito) {
@@ -28,13 +34,13 @@ function mostrarResultado(elemento, mensaje, exito) {
 
 function renderUsuarioCard(u) {
   const activo = u.activo
-    ? '<span class="badge badge-activo">Activo</span>'
-    : '<span class="badge badge-inactivo">Inactivo</span>';
+    ? `<span class="badge badge-activo">${t('badge.active')}</span>`
+    : `<span class="badge badge-inactivo">${t('badge.inactive')}</span>`;
   return `
     <div class="usuario-card">
       <h4>${escapar(u.nombre)}</h4>
       <p>📧 ${escapar(u.email)}</p>
-      ${u.edad != null ? `<p>🎂 ${u.edad} años</p>` : ''}
+      ${u.edad != null ? `<p>🎂 ${u.edad} ${t('years')}</p>` : ''}
       ${u.ciudad ? `<p>🏙️ ${escapar(u.ciudad)}</p>` : ''}
       ${u.pais ? `<p>🌎 ${escapar(u.pais)}</p>` : ''}
       ${u.telefono ? `<p>📞 ${escapar(u.telefono)}</p>` : ''}
@@ -44,17 +50,17 @@ function renderUsuarioCard(u) {
 
 function renderListaUsuarios(usuarios, contenedor) {
   if (!usuarios.length) {
-    contenedor.innerHTML = '<div class="resultado-lista"><p>Sin resultados</p></div>';
+    contenedor.innerHTML = `<div class="resultado-lista"><p>${t('no.results')}</p></div>`;
     return;
   }
   const items = usuarios.map(u =>
     `<div class="item"><strong>${escapar(u.nombre)}</strong> — ${escapar(u.email)}` +
     `${u.ciudad ? ` · ${escapar(u.ciudad)}` : ''}` +
-    `${u.edad != null ? ` · ${u.edad} años` : ''}</div>`
+    `${u.edad != null ? ` · ${u.edad} ${t('years')}` : ''}</div>`
   ).join('');
   contenedor.innerHTML =
     `<div class="resultado-lista">` +
-    `<div class="contador">${usuarios.length} resultado(s)</div>${items}</div>`;
+    `<div class="contador">${t('results.count', { n: usuarios.length })}</div>${items}</div>`;
 }
 
 function escapar(str) {
@@ -64,12 +70,12 @@ function escapar(str) {
 }
 
 async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    headers: { 'Content-Type': 'application/json' },
+  const res = await fetch(withLang(url), {
+    headers: { 'Content-Type': 'application/json', 'Accept-Language': getLang() },
     ...options,
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  if (!res.ok) throw new Error(data.error || `${t('err.generic')} ${res.status}`);
   return data;
 }
 
@@ -77,16 +83,16 @@ async function apiFetch(url, options = {}) {
 
 async function cargarUltimosUsuarios() {
   const grid = document.getElementById('grid-usuarios');
-  grid.innerHTML = '<div class="loading">Cargando usuarios</div>';
+  grid.innerHTML = `<div class="loading">${t('loading.users')}</div>`;
   try {
     const data = await apiFetch(`${API_BASE}/usuarios?limite=6&offset=0`);
     if (!data.datos.length) {
-      grid.innerHTML = '<p style="color:#fff">No hay usuarios registrados</p>';
+      grid.innerHTML = `<p style="color:#fff">${t('no.users')}</p>`;
       return;
     }
     grid.innerHTML = data.datos.map(renderUsuarioCard).join('');
   } catch (err) {
-    grid.innerHTML = `<p style="color:#fff">Error: ${escapar(err.message)}</p>`;
+    grid.innerHTML = `<p style="color:#fff">${t('err.generic')}: ${escapar(err.message)}</p>`;
   }
 }
 
@@ -95,9 +101,9 @@ async function cargarUltimosUsuarios() {
 async function buscarEmail() {
   const email = document.getElementById('input-email').value.trim();
   const el = document.getElementById('resultado-email');
-  if (!email) return mostrarResultado(el, 'Ingresa un email', false);
+  if (!email) return mostrarResultado(el, t('err.enterEmail'), false);
 
-  el.innerHTML = '<div class="loading" style="padding:12px">Buscando</div>';
+  el.innerHTML = `<div class="loading" style="padding:12px">${t('loading.search')}</div>`;
   try {
     const data = await apiFetch(`${API_BASE}/search/email?email=${encodeURIComponent(email)}`);
     el.innerHTML = renderUsuarioCard(data.datos);
@@ -109,9 +115,9 @@ async function buscarEmail() {
 async function buscarNombre() {
   const nombre = document.getElementById('input-nombre').value.trim();
   const el = document.getElementById('resultado-nombre');
-  if (!nombre) return mostrarResultado(el, 'Ingresa un nombre', false);
+  if (!nombre) return mostrarResultado(el, t('err.enterName'), false);
 
-  el.innerHTML = '<div class="loading" style="padding:12px">Buscando</div>';
+  el.innerHTML = `<div class="loading" style="padding:12px">${t('loading.search')}</div>`;
   try {
     const data = await apiFetch(
       `${API_BASE}/search/nombre?nombre=${encodeURIComponent(nombre)}&limite=50`
@@ -125,9 +131,9 @@ async function buscarNombre() {
 async function buscarCiudad() {
   const ciudad = document.getElementById('input-ciudad').value.trim();
   const el = document.getElementById('resultado-ciudad');
-  if (!ciudad) return mostrarResultado(el, 'Ingresa una ciudad', false);
+  if (!ciudad) return mostrarResultado(el, t('err.enterCity'), false);
 
-  el.innerHTML = '<div class="loading" style="padding:12px">Buscando</div>';
+  el.innerHTML = `<div class="loading" style="padding:12px">${t('loading.search')}</div>`;
   try {
     const data = await apiFetch(
       `${API_BASE}/search/ciudad?ciudad=${encodeURIComponent(ciudad)}&limite=50`
@@ -143,10 +149,10 @@ async function buscarEdad() {
   const max = document.getElementById('input-edad-max').value;
   const el = document.getElementById('resultado-edad');
 
-  if (min === '' || max === '') return mostrarResultado(el, 'Ingresa rango de edad', false);
-  if (Number(min) > Number(max)) return mostrarResultado(el, 'Edad mínima > máxima', false);
+  if (min === '' || max === '') return mostrarResultado(el, t('err.enterAge'), false);
+  if (Number(min) > Number(max)) return mostrarResultado(el, t('err.ageRange'), false);
 
-  el.innerHTML = '<div class="loading" style="padding:12px">Buscando</div>';
+  el.innerHTML = `<div class="loading" style="padding:12px">${t('loading.search')}</div>`;
   try {
     const data = await apiFetch(
       `${API_BASE}/search/edad?edad_minima=${min}&edad_maxima=${max}`
@@ -165,7 +171,7 @@ async function crearUsuario(event) {
 
   const nombre = document.getElementById('crear-nombre').value.trim();
   const email = document.getElementById('crear-email').value.trim();
-  if (!nombre || !email) return mostrarResultado(el, 'Nombre y email requeridos', false);
+  if (!nombre || !email) return mostrarResultado(el, t('err.nameEmail'), false);
 
   const body = { nombre, email };
   const edad = document.getElementById('crear-edad').value;
@@ -194,16 +200,16 @@ async function crearUsuario(event) {
 
 async function cargarEstadisticas() {
   const grid = document.getElementById('grid-stats');
-  grid.innerHTML = '<div class="loading">Cargando estadísticas</div>';
+  grid.innerHTML = `<div class="loading">${t('loading.stats')}</div>`;
   try {
     const data = await apiFetch(`${API_BASE}/estadisticas`);
     const s = data.datos;
     const cards = [
-      { icon: '👥', num: s.total, label: 'Total usuarios' },
-      { icon: '✅', num: s.activos, label: 'Activos' },
-      { icon: '🎂', num: s.edad_promedio ?? '—', label: 'Edad promedio' },
-      { icon: '🏙️', num: s.ciudades_unicas, label: 'Ciudades únicas' },
-      { icon: '🌎', num: s.paises_unicos, label: 'Países únicos' },
+      { icon: '👥', num: s.total, label: t('stats.total') },
+      { icon: '✅', num: s.activos, label: t('stats.active') },
+      { icon: '🎂', num: s.edad_promedio ?? '—', label: t('stats.avgAge') },
+      { icon: '🏙️', num: s.ciudades_unicas, label: t('stats.cities') },
+      { icon: '🌎', num: s.paises_unicos, label: t('stats.countries') },
     ];
     grid.innerHTML = cards.map(c => `
       <div class="stat-card">
@@ -212,7 +218,7 @@ async function cargarEstadisticas() {
         <div class="stat-label">${c.label}</div>
       </div>`).join('');
   } catch (err) {
-    grid.innerHTML = `<p style="color:#fff">Error: ${escapar(err.message)}</p>`;
+    grid.innerHTML = `<p style="color:#fff">${t('err.generic')}: ${escapar(err.message)}</p>`;
   }
 }
 

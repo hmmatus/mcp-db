@@ -35,11 +35,13 @@ mcp-db/
 ├── app/
 │   ├── __init__.py
 │   ├── api.py              # API REST Flask + rutas de voz
+│   ├── i18n.py               # Mensajes API ES/EN
 │   ├── database.py           # Conexión PostgreSQL y CRUD
 │   ├── models.py             # Modelos Usuario y EstadisticasUsuarios
 │   ├── server.py             # Servidor MCP para ChatGPT
 │   └── voice.py              # Whisper, TTS e interpretación de comandos
 ├── web/static/
+│   ├── i18n.js               # Traducciones ES/EN
 │   ├── index.html            # Interfaz web
 │   ├── style.css             # Estilos
 │   ├── script.js             # Lógica UI (búsqueda, crear, stats)
@@ -156,11 +158,139 @@ Respuesta estándar:
 ```json
 {
   "exito": true,
+  "lang": "en",
   "datos": {},
   "error": null,
   "cantidad": 10,
-  "mensaje": "Usuario creado"
+  "mensaje": "User created"
 }
+```
+
+### Idioma (ES / EN)
+
+- **Web:** botones **ES | EN** en la barra de navegación
+- **API:** parámetro `?lang=en` o header `Accept-Language: en`
+
+Ejemplo:
+
+```bash
+curl -s "http://localhost:5001/api/usuarios?limite=2&lang=en"
+```
+
+---
+
+## Probar desde terminal
+
+Base URL: `http://localhost:5001`  
+Añade `&lang=en` para respuestas en inglés.
+
+### Health
+
+```bash
+curl -s http://localhost:5001/health
+curl -s "http://localhost:5001/health?lang=en"
+```
+
+### Listar usuarios
+
+```bash
+curl -s "http://localhost:5001/api/usuarios?limite=5&offset=0"
+curl -s "http://localhost:5001/api/usuarios?limite=5&lang=en"
+```
+
+### Usuario por ID
+
+```bash
+curl -s http://localhost:5001/api/usuarios/1
+```
+
+### Buscar por email
+
+```bash
+curl -s "http://localhost:5001/api/search/email?email=pilar.flores5993@empresa.com&lang=en"
+```
+
+### Buscar por nombre (parcial)
+
+```bash
+curl -s "http://localhost:5001/api/search/nombre?nombre=Juan&limite=10"
+curl -s "http://localhost:5001/api/search/nombre?nombre=Juan&limite=10&lang=en"
+```
+
+### Buscar por ciudad
+
+```bash
+curl -s "http://localhost:5001/api/search/ciudad?ciudad=San%20Salvador&limite=10"
+curl -s "http://localhost:5001/api/search/ciudad?ciudad=San%20Salvador&lang=en"
+```
+
+### Buscar por rango de edad
+
+```bash
+curl -s "http://localhost:5001/api/search/edad?edad_minima=25&edad_maxima=35"
+```
+
+### Estadísticas
+
+```bash
+curl -s http://localhost:5001/api/estadisticas
+curl -s "http://localhost:5001/api/estadisticas?lang=en"
+```
+
+### Crear usuario
+
+```bash
+curl -s -X POST http://localhost:5001/api/usuarios \
+  -H "Content-Type: application/json" \
+  -H "Accept-Language: en" \
+  -d '{"nombre":"Test User","email":"test.user@example.com","edad":30,"ciudad":"San Salvador"}'
+```
+
+### Actualizar usuario
+
+```bash
+curl -s -X PUT http://localhost:5001/api/usuarios/1 \
+  -H "Content-Type: application/json" \
+  -d '{"ciudad":"Santa Ana"}'
+```
+
+### Eliminar usuario (borrado lógico)
+
+```bash
+curl -s -X DELETE "http://localhost:5001/api/usuarios/999&lang=en"
+```
+
+### Comando de voz (texto → acción)
+
+```bash
+# Interpretar comando en inglés
+curl -s -X POST "http://localhost:5001/api/voice/procesar-comando?lang=en" \
+  -H "Content-Type: application/json" \
+  -d '{"comando":"Search users in San Salvador","lang":"en"}'
+
+# Interpretar comando en español
+curl -s -X POST http://localhost:5001/api/voice/procesar-comando \
+  -H "Content-Type: application/json" \
+  -d '{"comando":"Busca usuarios en San Salvador"}'
+```
+
+### PostgreSQL directo (psql)
+
+```bash
+# Conectar
+psql -h localhost -p 5433 -U mcpuser -d usuarios_db
+
+# Dentro de psql:
+SELECT id, nombre, email, ciudad FROM usuarios LIMIT 5;
+SELECT * FROM usuarios WHERE LOWER(ciudad) LIKE '%san salvador%' LIMIT 10;
+SELECT COUNT(*) FROM usuarios WHERE activo = true;
+SELECT ciudad, COUNT(*) FROM usuarios GROUP BY ciudad ORDER BY count DESC LIMIT 10;
+```
+
+### Formato JSON legible (opcional)
+
+```bash
+curl -s "http://localhost:5001/api/estadisticas?lang=en" | python3 -m json.tool
 ```
 
 ---
@@ -177,7 +307,7 @@ Abre **http://localhost:5001** en el navegador.
 - **Crear** — formulario de nuevo usuario
 - **Estadísticas** — totales, edad promedio, ciudades y países
 
-### Comandos de voz (ejemplos)
+### Comandos de voz — Español
 
 - "Busca usuarios en San Salvador"
 - "Dame los usuarios entre 25 y 35 años"
@@ -186,7 +316,16 @@ Abre **http://localhost:5001** en el navegador.
 - "Cuántos usuarios hay en total?"
 - "Elimina el usuario 5"
 
-Al entrar, la app solicita permiso de micrófono con una explicación de uso.
+### Voice commands — English
+
+- "Search users in San Salvador"
+- "Show users between 25 and 35 years old"
+- "Search for Juan"
+- "Create a user named Carlos with email carlos@mail.com"
+- "How many users are there in total?"
+- "Delete user 5"
+
+Al entrar, la app solicita permiso de micrófono. Usa **ES | EN** en el navbar para cambiar idioma.
 
 ---
 

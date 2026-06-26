@@ -7,207 +7,192 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <!-- Modal permiso micrófono -->
   <div id="modal-permiso-mic" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-mic-titulo">
     <div class="modal-card">
-      <h2 id="modal-mic-titulo">🎤 Acceso al micrófono</h2>
-      <p class="modal-lead">Esta app usa tu voz para controlar la base de datos de usuarios.</p>
-
+      <h2 id="modal-mic-titulo" data-i18n="modal.mic.title">🎤 Acceso al micrófono</h2>
+      <p class="modal-lead" data-i18n="modal.mic.lead">Esta app usa tu voz para controlar la base de datos de usuarios.</p>
       <ul class="modal-lista">
-        <li>Graba audio mientras mantienes presionado el botón 🎤</li>
-        <li>Transcribe tu comando con <strong>OpenAI Whisper</strong></li>
-        <li>Ejecuta búsquedas, creación o estadísticas</li>
-        <li>Responde con voz sintetizada (TTS)</li>
+        <li data-i18n="modal.mic.l1">Graba audio mientras mantienes presionado el botón 🎤</li>
+        <li data-i18n="modal.mic.l2">Transcribe tu comando con OpenAI Whisper</li>
+        <li data-i18n="modal.mic.l3">Ejecuta búsquedas, creación o estadísticas</li>
+        <li data-i18n="modal.mic.l4">Responde con voz sintetizada (TTS)</li>
       </ul>
-
-      <p class="modal-nota">
-        El audio se procesa en el servidor y se envía a OpenAI solo para transcribir.
-        No guardamos grabaciones en disco de forma permanente.
-      </p>
-
+      <p class="modal-nota" data-i18n="modal.mic.note">El audio se procesa en el servidor y se envía a OpenAI solo para transcribir. No guardamos grabaciones en disco de forma permanente.</p>
       <div id="modal-mic-error" class="modal-error hidden"></div>
-
       <div class="modal-actions">
-        <button id="btn-permitir-mic" type="button" class="btn">Permitir micrófono</button>
-        <button id="btn-rechazar-mic" type="button" class="btn btn-ghost">Ahora no</button>
+        <button id="btn-permitir-mic" type="button" class="btn" data-i18n="modal.mic.allow">Permitir micrófono</button>
+        <button id="btn-rechazar-mic" type="button" class="btn btn-ghost" data-i18n="modal.mic.deny">Ahora no</button>
       </div>
     </div>
   </div>
 
   <header class="header">
-    <h1>👥 MCP Usuarios</h1>
-    <p>Gestión de usuarios con PostgreSQL y API REST</p>
+    <h1 data-i18n="header.title">👥 MCP Usuarios</h1>
+    <p data-i18n="header.subtitle">Gestión de usuarios con PostgreSQL y API REST</p>
   </header>
 
   <nav class="navbar" id="navbar">
-    <button class="nav-btn active" data-seccion="voz">🎤 Voz</button>
-    <button class="nav-btn" data-seccion="inicio">🏠 Inicio</button>
-    <button class="nav-btn" data-seccion="buscar">🔍 Buscar</button>
-    <button class="nav-btn" data-seccion="crear">➕ Crear</button>
-    <button class="nav-btn" data-seccion="estadisticas">📊 Estadísticas</button>
+    <button class="nav-btn active" data-seccion="voz" data-i18n="nav.voice">🎤 Voz</button>
+    <button class="nav-btn" data-seccion="inicio" data-i18n="nav.home">🏠 Inicio</button>
+    <button class="nav-btn" data-seccion="buscar" data-i18n="nav.search">🔍 Buscar</button>
+    <button class="nav-btn" data-seccion="crear" data-i18n="nav.create">➕ Crear</button>
+    <button class="nav-btn" data-seccion="estadisticas" data-i18n="nav.stats">📊 Estadísticas</button>
+    <div class="lang-switch">
+      <button type="button" class="lang-btn active" data-lang="es">ES</button>
+      <button type="button" class="lang-btn" data-lang="en">EN</button>
+    </div>
   </nav>
 
   <main class="container">
-    <!-- VOZ -->
     <section id="seccion-voz" class="seccion activa">
-      <h2 class="section-title">🎤 Buscar por Voz</h2>
-
+      <h2 class="section-title" data-i18n="voice.title">🎤 Buscar por Voz</h2>
       <div class="card voice-card">
         <div id="mic-permiso-estado" class="mic-estado mic-estado--pendiente">
           <span id="mic-estado-icon">⏳</span>
-          <span id="mic-estado-texto">Verificando permiso de micrófono...</span>
+          <span id="mic-estado-texto" data-i18n="voice.mic.checking">Verificando permiso de micrófono...</span>
         </div>
-
+        <div class="mic-device-row">
+          <label for="select-mic" data-i18n="voice.mic.deviceLabel">Micrófono de entrada</label>
+          <select id="select-mic" class="mic-select" disabled>
+            <option value="" data-i18n="voice.mic.deviceDefault">Predeterminado del sistema</option>
+          </select>
+          <p class="mic-device-hint" data-i18n="voice.mic.deviceHint">Si usas audífonos, selecciona su micrófono aquí.</p>
+        </div>
         <div class="voice-interface">
           <button id="btn-microfono" class="btn-voice" type="button" disabled>
             <span class="microfono-icon">🎤</span>
-            <span class="microfono-text">Presiona y habla</span>
+            <span class="microfono-text" data-i18n="voice.mic.press">Presiona y habla</span>
           </button>
-
           <div id="grabando" class="grabando hidden">
             <div class="pulse"></div>
-            <p>Escuchando...</p>
+            <p data-i18n="voice.listening">Escuchando...</p>
           </div>
-
           <div class="transcription-box">
-            <p id="texto-escuchado" class="placeholder">Tú dices: </p>
+            <p id="texto-escuchado"><span data-i18n="voice.youSay">Tú dices:</span> </p>
           </div>
-
           <div id="respuesta-voz" class="respuesta-box hidden">
             <div class="spinner-small"></div>
-            <p>Procesando...</p>
+            <p data-i18n="voice.processing">Procesando...</p>
           </div>
-
           <div id="resultado-voz-area" class="resultado"></div>
-
           <div id="audio-player-area" class="hidden">
-            <button id="btn-reproducir" class="btn btn-secondary" type="button">
-              🔊 Reproducir respuesta
-            </button>
+            <button id="btn-reproducir" class="btn btn-secondary" type="button" data-i18n="voice.play">🔊 Reproducir respuesta</button>
             <audio id="audio-respuesta"></audio>
           </div>
         </div>
       </div>
-
       <div class="card">
-        <h3>📝 Ejemplos de comandos</h3>
+        <h3 data-i18n="voice.examples">📝 Ejemplos de comandos</h3>
         <ul class="features">
-          <li>"Busca usuarios en San Salvador"</li>
-          <li>"Dame los usuarios entre 25 y 35 años"</li>
-          <li>"Busca a Juan"</li>
-          <li>"Crea un usuario llamado Carlos Rodríguez con email carlos@mail.com"</li>
-          <li>"Cuántos usuarios hay en total?"</li>
-          <li>"Elimina el usuario 5"</li>
+          <li data-i18n="voice.ex1">"Busca usuarios en San Salvador"</li>
+          <li data-i18n="voice.ex2">"Dame los usuarios entre 25 y 35 años"</li>
+          <li data-i18n="voice.ex3">"Busca a Juan"</li>
+          <li data-i18n="voice.ex4">"Crea un usuario llamado Carlos Rodríguez con email carlos@mail.com"</li>
+          <li data-i18n="voice.ex5">"Cuántos usuarios hay en total?"</li>
+          <li data-i18n="voice.ex6">"Elimina el usuario 5"</li>
         </ul>
       </div>
     </section>
 
-    <!-- INICIO -->
     <section id="seccion-inicio" class="seccion">
       <div class="card">
-        <h2>Bienvenido</h2>
-        <p>Explora, busca y administra usuarios en tiempo real.</p>
+        <h2 data-i18n="home.welcome">Bienvenido</h2>
+        <p data-i18n="home.desc">Explora, busca y administra usuarios en tiempo real.</p>
         <ul class="features">
-          <li>🎤 Comandos de voz con Whisper y TTS</li>
-          <li>📋 Listado paginado de usuarios</li>
-          <li>🔎 Búsqueda por email, nombre, ciudad y edad</li>
-          <li>➕ Creación de nuevos registros</li>
-          <li>📊 Estadísticas globales de la base de datos</li>
+          <li data-i18n="home.f1">🎤 Comandos de voz con Whisper y TTS</li>
+          <li data-i18n="home.f2">📋 Listado paginado de usuarios</li>
+          <li data-i18n="home.f3">🔎 Búsqueda por email, nombre, ciudad y edad</li>
+          <li data-i18n="home.f4">➕ Creación de nuevos registros</li>
+          <li data-i18n="home.f5">📊 Estadísticas globales de la base de datos</li>
         </ul>
       </div>
-      <h3 class="section-title">Últimos usuarios</h3>
+      <h3 class="section-title" data-i18n="home.latest">Últimos usuarios</h3>
       <div id="grid-usuarios" class="grid-usuarios">
-        <div class="loading">Cargando usuarios...</div>
+        <div class="loading" data-i18n="loading.users">Cargando usuarios</div>
       </div>
     </section>
 
-    <!-- BUSCAR -->
     <section id="seccion-buscar" class="seccion">
-      <h2 class="section-title">🔍 Búsqueda de usuarios</h2>
-
+      <h2 class="section-title" data-i18n="search.title">🔍 Búsqueda de usuarios</h2>
       <div class="search-grid">
         <div class="card search-card">
-          <h3>📧 Por Email</h3>
-          <input type="email" id="input-email" placeholder="usuario@ejemplo.com">
-          <button class="btn" onclick="buscarEmail()">Buscar</button>
+          <h3 data-i18n="search.email">📧 Por Email</h3>
+          <input type="email" id="input-email" data-i18n-placeholder="ph.email" placeholder="usuario@ejemplo.com">
+          <button class="btn" onclick="buscarEmail()" data-i18n="search.btn">Buscar</button>
           <div id="resultado-email" class="resultado"></div>
         </div>
-
         <div class="card search-card">
-          <h3>👤 Por Nombre</h3>
-          <input type="text" id="input-nombre" placeholder="Nombre o parte del nombre">
-          <button class="btn" onclick="buscarNombre()">Buscar</button>
+          <h3 data-i18n="search.name">👤 Por Nombre</h3>
+          <input type="text" id="input-nombre" data-i18n-placeholder="ph.name" placeholder="Nombre o parte del nombre">
+          <button class="btn" onclick="buscarNombre()" data-i18n="search.btn">Buscar</button>
           <div id="resultado-nombre" class="resultado"></div>
         </div>
-
         <div class="card search-card">
-          <h3>🏙️ Por Ciudad</h3>
-          <input type="text" id="input-ciudad" placeholder="Ciudad">
-          <button class="btn" onclick="buscarCiudad()">Buscar</button>
+          <h3 data-i18n="search.city">🏙️ Por Ciudad</h3>
+          <input type="text" id="input-ciudad" data-i18n-placeholder="ph.city" placeholder="Ciudad">
+          <button class="btn" onclick="buscarCiudad()" data-i18n="search.btn">Buscar</button>
           <div id="resultado-ciudad" class="resultado"></div>
         </div>
-
         <div class="card search-card">
-          <h3>🎂 Por Edad</h3>
+          <h3 data-i18n="search.age">🎂 Por Edad</h3>
           <div class="edad-inputs">
-            <input type="number" id="input-edad-min" placeholder="Mín" min="0" max="150" value="18">
+            <input type="number" id="input-edad-min" data-i18n-placeholder="ph.min" placeholder="Mín" min="0" max="150" value="18">
             <span>—</span>
-            <input type="number" id="input-edad-max" placeholder="Máx" min="0" max="150" value="65">
+            <input type="number" id="input-edad-max" data-i18n-placeholder="ph.max" placeholder="Máx" min="0" max="150" value="65">
           </div>
-          <button class="btn" onclick="buscarEdad()">Buscar</button>
+          <button class="btn" onclick="buscarEdad()" data-i18n="search.btn">Buscar</button>
           <div id="resultado-edad" class="resultado"></div>
         </div>
       </div>
     </section>
 
-    <!-- CREAR -->
     <section id="seccion-crear" class="seccion">
       <div class="card form-card">
-        <h2>➕ Crear nuevo usuario</h2>
+        <h2 data-i18n="create.title">➕ Crear nuevo usuario</h2>
         <form id="form-crear" onsubmit="crearUsuario(event)">
           <div class="form-group">
-            <label for="crear-nombre">Nombre *</label>
-            <input type="text" id="crear-nombre" required placeholder="Nombre completo">
+            <label for="crear-nombre" data-i18n="lbl.name">Nombre *</label>
+            <input type="text" id="crear-nombre" required data-i18n-placeholder="ph.fullname" placeholder="Nombre completo">
           </div>
           <div class="form-group">
-            <label for="crear-email">Email *</label>
-            <input type="email" id="crear-email" required placeholder="usuario@ejemplo.com">
+            <label for="crear-email" data-i18n="lbl.email">Email *</label>
+            <input type="email" id="crear-email" required data-i18n-placeholder="ph.email" placeholder="usuario@ejemplo.com">
           </div>
           <div class="form-group">
-            <label for="crear-edad">Edad</label>
-            <input type="number" id="crear-edad" min="0" max="150" placeholder="Opcional">
+            <label for="crear-edad" data-i18n="lbl.age">Edad</label>
+            <input type="number" id="crear-edad" min="0" max="150" data-i18n-placeholder="ph.optional" placeholder="Opcional">
           </div>
           <div class="form-group">
-            <label for="crear-ciudad">Ciudad</label>
-            <input type="text" id="crear-ciudad" placeholder="Opcional">
+            <label for="crear-ciudad" data-i18n="lbl.city">Ciudad</label>
+            <input type="text" id="crear-ciudad" data-i18n-placeholder="ph.optional" placeholder="Opcional">
           </div>
           <div class="form-group">
-            <label for="crear-pais">País</label>
-            <input type="text" id="crear-pais" placeholder="Opcional">
+            <label for="crear-pais" data-i18n="lbl.country">País</label>
+            <input type="text" id="crear-pais" data-i18n-placeholder="ph.optional" placeholder="Opcional">
           </div>
           <div class="form-group">
-            <label for="crear-telefono">Teléfono</label>
-            <input type="text" id="crear-telefono" placeholder="Opcional">
+            <label for="crear-telefono" data-i18n="lbl.phone">Teléfono</label>
+            <input type="text" id="crear-telefono" data-i18n-placeholder="ph.optional" placeholder="Opcional">
           </div>
-          <button type="submit" class="btn btn-full">Crear Usuario</button>
+          <button type="submit" class="btn btn-full" data-i18n="create.submit">Crear Usuario</button>
         </form>
         <div id="resultado-crear" class="resultado"></div>
       </div>
     </section>
 
-    <!-- ESTADÍSTICAS -->
     <section id="seccion-estadisticas" class="seccion">
-      <h2 class="section-title">📊 Estadísticas globales</h2>
+      <h2 class="section-title" data-i18n="stats.title">📊 Estadísticas globales</h2>
       <div id="grid-stats" class="grid-stats">
-        <div class="loading">Cargando estadísticas...</div>
+        <div class="loading" data-i18n="loading.stats">Cargando estadísticas</div>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <p>MCP Usuarios DB &mdash; Flask + PostgreSQL + Docker</p>
+    <p data-i18n="footer">MCP Usuarios DB — Flask + PostgreSQL + Docker</p>
   </footer>
 
+  <script src="/static/i18n.js"></script>
   <script src="/static/script.js"></script>
   <script src="/static/voice.js"></script>
 </body>
